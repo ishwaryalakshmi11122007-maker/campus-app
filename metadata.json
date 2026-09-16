@@ -1,0 +1,6 @@
+{
+  "name": "CampusDB",
+  "description": "College database management, attendance tracking, marks & results storage for multiple departments, real-time academic performance analytics, student document portal, assignment & leave management, and exam deadline notifications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

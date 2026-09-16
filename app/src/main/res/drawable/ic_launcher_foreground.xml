@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Graduation Cap Top Diamond -->
+    <path
+        android:pathData="M54,28 L82,40 L54,52 L26,40 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="26"
+                android:startY="28"
+                android:endX="82"
+                android:endY="52"
+                android:type="linear">
+                <item android:color="#FFFFFF" android:offset="0.0" />
+                <item android:color="#E2E8F0" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Graduation Cap Skull Band -->
+    <path
+        android:fillColor="#CBD5E1"
+        android:pathData="M36,46 L36,54 C36,60 44,64 54,64 C64,64 72,60 72,54 L72,46 L54,53 Z" />
+    <!-- Tassel String and Bead -->
+    <path
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M74,43 L83,52 L83,62" />
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M81,62 A2,2 0 1,0 85,62 A2,2 0 1,0 81,62" />
+    <!-- Database Stack Tier 1 -->
+    <path
+        android:pathData="M32,68 C32,65 42,63 54,63 C66,63 76,65 76,68 L76,73 C76,76 66,78 54,78 C42,78 32,76 32,73 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="32"
+                android:startY="63"
+                android:endX="76"
+                android:endY="78"
+                android:type="linear">
+                <item android:color="#38BDF8" android:offset="0.0" />
+                <item android:color="#0284C7" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#BAE6FD"
+        android:pathData="M37,70 A1.5,1.5 0 1,0 40,70 A1.5,1.5 0 1,0 37,70" />
+    <!-- Database Stack Tier 2 -->
+    <path
+        android:pathData="M32,76 C32,73 42,71 54,71 C66,71 76,73 76,76 L76,81 C76,84 66,86 54,86 C42,86 32,84 32,81 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="32"
+                android:startY="71"
+                android:endX="76"
+                android:endY="86"
+                android:type="linear">
+                <item android:color="#0284C7" android:offset="0.0" />
+                <item android:color="#0369A1" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path
+        android:fillColor="#BAE6FD"
+        android:pathData="M37,78 A1.5,1.5 0 1,0 40,78 A1.5,1.5 0 1,0 37,78" />
+</vector>
