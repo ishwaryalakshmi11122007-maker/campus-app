@@ -9,11 +9,14 @@ import com.example.data.model.AcademicResultEntity
 import com.example.data.model.AssignmentEntity
 import com.example.data.model.AssignmentSubmissionEntity
 import com.example.data.model.AttendanceRecordEntity
+import com.example.data.model.AuditLogEntity
 import com.example.data.model.DepartmentEntity
+import com.example.data.model.FacultyMemberEntity
 import com.example.data.model.LeaveRequestEntity
 import com.example.data.model.NotificationEntity
 import com.example.data.model.StudentDocumentEntity
 import com.example.data.model.StudentEntity
+import com.example.data.model.UserAccountEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -23,15 +26,36 @@ interface CampusDao {
     @Query("SELECT * FROM departments ORDER BY name ASC")
     fun getAllDepartments(): Flow<List<DepartmentEntity>>
 
+    @Query("SELECT * FROM departments WHERE status = 'ACTIVE' ORDER BY name ASC")
+    fun getActiveDepartments(): Flow<List<DepartmentEntity>>
+
+    @Query("SELECT * FROM departments WHERE id = :id LIMIT 1")
+    fun getDepartmentById(id: String): Flow<DepartmentEntity?>
+
+    @Query("SELECT * FROM departments WHERE id = :id LIMIT 1")
+    suspend fun getDepartmentByIdDirect(id: String): DepartmentEntity?
+
+    @Query("SELECT * FROM departments WHERE LOWER(code) = LOWER(:code) LIMIT 1")
+    suspend fun getDepartmentByCode(code: String): DepartmentEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDepartments(departments: List<DepartmentEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertDepartment(department: DepartmentEntity)
 
+    @Update
+    suspend fun updateDepartment(department: DepartmentEntity)
+
+    @Query("UPDATE departments SET status = :status WHERE id = :id")
+    suspend fun updateDepartmentStatus(id: String, status: String)
+
     // --- STUDENTS ---
     @Query("SELECT * FROM students ORDER BY rollNo ASC")
     fun getAllStudents(): Flow<List<StudentEntity>>
+
+    @Query("SELECT * FROM students WHERE status = 'ACTIVE' ORDER BY rollNo ASC")
+    fun getActiveStudents(): Flow<List<StudentEntity>>
 
     @Query("SELECT * FROM students WHERE departmentId = :deptId ORDER BY rollNo ASC")
     fun getStudentsByDepartment(deptId: String): Flow<List<StudentEntity>>
@@ -42,6 +66,12 @@ interface CampusDao {
     @Query("SELECT * FROM students WHERE id = :id LIMIT 1")
     suspend fun getStudentByIdDirect(id: String): StudentEntity?
 
+    @Query("SELECT * FROM students WHERE LOWER(rollNo) = LOWER(:rollNo) LIMIT 1")
+    suspend fun getStudentByRollNo(rollNo: String): StudentEntity?
+
+    @Query("SELECT * FROM students WHERE LOWER(email) = LOWER(:email) LIMIT 1")
+    suspend fun getStudentByEmail(email: String): StudentEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStudents(students: List<StudentEntity>)
 
@@ -50,6 +80,43 @@ interface CampusDao {
 
     @Update
     suspend fun updateStudent(student: StudentEntity)
+
+    @Query("UPDATE students SET status = :status WHERE id = :id")
+    suspend fun updateStudentStatus(id: String, status: String)
+
+    // --- FACULTY MEMBERS ---
+    @Query("SELECT * FROM faculty_members ORDER BY fullName ASC")
+    fun getAllFacultyMembers(): Flow<List<FacultyMemberEntity>>
+
+    @Query("SELECT * FROM faculty_members WHERE status = 'ACTIVE' ORDER BY fullName ASC")
+    fun getActiveFacultyMembers(): Flow<List<FacultyMemberEntity>>
+
+    @Query("SELECT * FROM faculty_members WHERE departmentId = :deptId ORDER BY fullName ASC")
+    fun getFacultyByDepartment(deptId: String): Flow<List<FacultyMemberEntity>>
+
+    @Query("SELECT * FROM faculty_members WHERE employeeId = :employeeId LIMIT 1")
+    fun getFacultyMemberById(employeeId: String): Flow<FacultyMemberEntity?>
+
+    @Query("SELECT * FROM faculty_members WHERE employeeId = :employeeId LIMIT 1")
+    suspend fun getFacultyMemberByIdDirect(employeeId: String): FacultyMemberEntity?
+
+    @Query("SELECT * FROM faculty_members WHERE LOWER(username) = LOWER(:username) LIMIT 1")
+    suspend fun getFacultyByUsername(username: String): FacultyMemberEntity?
+
+    @Query("SELECT * FROM faculty_members WHERE LOWER(email) = LOWER(:email) LIMIT 1")
+    suspend fun getFacultyByEmail(email: String): FacultyMemberEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFacultyMember(faculty: FacultyMemberEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFacultyMembers(facultyList: List<FacultyMemberEntity>)
+
+    @Update
+    suspend fun updateFacultyMember(faculty: FacultyMemberEntity)
+
+    @Query("UPDATE faculty_members SET status = :status WHERE employeeId = :employeeId")
+    suspend fun updateFacultyMemberStatus(employeeId: String, status: String)
 
     // --- ATTENDANCE ---
     @Query("SELECT * FROM attendance_records WHERE studentId = :studentId ORDER BY date DESC")
@@ -168,17 +235,48 @@ interface CampusDao {
 
     // --- USER ACCOUNTS & AUTH ---
     @Query("SELECT * FROM user_accounts ORDER BY role ASC, fullName ASC")
-    fun getAllUserAccounts(): Flow<List<com.example.data.model.UserAccountEntity>>
+    fun getAllUserAccounts(): Flow<List<UserAccountEntity>>
 
     @Query("SELECT * FROM user_accounts WHERE LOWER(username) = LOWER(:username) LIMIT 1")
-    suspend fun getUserByUsername(username: String): com.example.data.model.UserAccountEntity?
+    suspend fun getUserByUsername(username: String): UserAccountEntity?
 
     @Query("SELECT * FROM user_accounts WHERE studentId = :studentId LIMIT 1")
-    suspend fun getUserByStudentId(studentId: String): com.example.data.model.UserAccountEntity?
+    suspend fun getUserByStudentId(studentId: String): UserAccountEntity?
+
+    @Query("SELECT * FROM user_accounts WHERE employeeId = :employeeId LIMIT 1")
+    suspend fun getUserByEmployeeId(employeeId: String): UserAccountEntity?
+
+    @Query("SELECT * FROM user_accounts WHERE id = :id LIMIT 1")
+    suspend fun getUserAccountById(id: String): UserAccountEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUserAccounts(accounts: List<com.example.data.model.UserAccountEntity>)
+    suspend fun insertUserAccounts(accounts: List<UserAccountEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertUserAccount(account: com.example.data.model.UserAccountEntity)
+    suspend fun insertUserAccount(account: UserAccountEntity)
+
+    @Update
+    suspend fun updateUserAccount(account: UserAccountEntity)
+
+    @Query("UPDATE user_accounts SET status = :status WHERE id = :id")
+    suspend fun updateAccountStatus(id: String, status: String)
+
+    @Query("UPDATE user_accounts SET status = :status WHERE LOWER(username) = LOWER(:username)")
+    suspend fun updateAccountStatusByUsername(username: String, status: String)
+
+    @Query("UPDATE user_accounts SET passwordHash = :newPasswordHash, plainPasswordHint = :plainHint WHERE id = :id")
+    suspend fun updateAccountPassword(id: String, newPasswordHash: String, plainHint: String = "")
+
+    @Query("UPDATE user_accounts SET lastLogin = :timestamp WHERE id = :id")
+    suspend fun updateLastLogin(id: String, timestamp: Long)
+
+    // --- AUDIT LOGS ---
+    @Query("SELECT * FROM audit_logs ORDER BY timestamp DESC")
+    fun getAllAuditLogs(): Flow<List<AuditLogEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAuditLog(log: AuditLogEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAuditLogs(logs: List<AuditLogEntity>)
 }

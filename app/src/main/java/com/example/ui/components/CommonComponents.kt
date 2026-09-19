@@ -151,14 +151,20 @@ fun CampusTopAppBar(
                     }
 
                     val userSubtitle = if (currentUserAccount != null) {
-                        if (currentUserAccount.role == "STUDENT") {
-                            "${currentUserAccount.fullName} · Roll: ${currentUserAccount.username}"
-                        } else {
-                            "${currentUserAccount.fullName} · ${currentUserAccount.departmentId} Staff"
+                        when (currentUserAccount.role) {
+                            "ADMIN" -> "${currentUserAccount.fullName} · System Administrator"
+                            "DEAN" -> "${currentUserAccount.fullName} · Dean of Academic Affairs"
+                            "FACULTY" -> "${currentUserAccount.fullName} · ${currentUserAccount.departmentId} Faculty"
+                            "STUDENT" -> "${currentUserAccount.fullName} · Roll: ${currentUserAccount.username}"
+                            else -> currentUserAccount.fullName
                         }
                     } else {
-                        if (currentRole == UserRole.FACULTY) "Faculty Administration"
-                        else "Student: ${activeStudent?.fullName ?: "Portal"}"
+                        when (currentRole) {
+                            UserRole.ADMIN -> "System Administrator"
+                            UserRole.DEAN -> "Dean of Academic Affairs"
+                            UserRole.FACULTY -> "Faculty Administration"
+                            UserRole.STUDENT -> "Student: ${activeStudent?.fullName ?: "Portal"}"
+                        }
                     }
 
                     Text(
@@ -171,31 +177,34 @@ fun CampusTopAppBar(
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Role Badge Pill
+                // Institutional Authenticated Role Badge (Fixed according to authenticated credentials)
+                val (roleColor, roleIcon, roleLabel) = when (currentRole) {
+                    UserRole.ADMIN -> Triple(CampusNavyPrimary, Icons.Default.Shield, "Admin")
+                    UserRole.DEAN -> Triple(Color(0xFF7C3AED), Icons.Default.School, "Dean")
+                    UserRole.FACULTY -> Triple(CampusNavyPrimary, Icons.Default.SupervisorAccount, currentUserAccount?.departmentId ?: "Faculty")
+                    UserRole.STUDENT -> Triple(CampusTeal, Icons.Default.Person, "Student")
+                }
+
                 Surface(
                     shape = RoundedCornerShape(20.dp),
-                    color = if (currentRole == UserRole.FACULTY) CampusNavyPrimary.copy(alpha = 0.12f)
-                    else CampusTeal.copy(alpha = 0.15f),
-                    modifier = Modifier
-                        .testTag("role_switcher_pill")
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable { onRoleClick() }
+                    color = roleColor.copy(alpha = 0.15f),
+                    modifier = Modifier.testTag("role_badge_pill")
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = if (currentRole == UserRole.FACULTY) Icons.Default.SupervisorAccount else Icons.Default.Person,
-                            contentDescription = "Role Icon",
-                            tint = if (currentRole == UserRole.FACULTY) CampusNavyPrimary else CampusTeal,
+                            imageVector = roleIcon,
+                            contentDescription = "Role: $roleLabel",
+                            tint = roleColor,
                             modifier = Modifier.size(15.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (currentRole == UserRole.FACULTY) (currentUserAccount?.departmentId ?: "Faculty") else "Student",
+                            text = roleLabel,
                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = if (currentRole == UserRole.FACULTY) CampusNavyPrimary else CampusTeal
+                            color = roleColor
                         )
                     }
                 }

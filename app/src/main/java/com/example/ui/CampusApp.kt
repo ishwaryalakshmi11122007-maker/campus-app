@@ -18,15 +18,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.FactCheck
 import androidx.compose.material.icons.filled.Grade
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.ManageAccounts
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.RateReview
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SupervisorAccount
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -61,7 +66,12 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.ui.components.CampusTopAppBar
 import com.example.ui.components.NotificationCenterDialog
-import com.example.ui.components.RoleSwitcherDialog
+import com.example.ui.screens.admin.AdminAccountsScreen
+import com.example.ui.screens.admin.AdminAuditLogsScreen
+import com.example.ui.screens.admin.AdminDashboardScreen
+import com.example.ui.screens.admin.AdminDepartmentScreen
+import com.example.ui.screens.admin.AdminFacultyScreen
+import com.example.ui.screens.admin.AdminStudentScreen
 import com.example.ui.screens.auth.CampusLoginScreen
 import com.example.ui.screens.faculty.AnalyticsDashboardScreen
 import com.example.ui.screens.faculty.AttendanceManagementScreen
@@ -78,6 +88,7 @@ import com.example.ui.screens.student.StudentLeaveRequestScreen
 import com.example.ui.screens.student.StudentRecordsScreen
 import com.example.ui.theme.CampusNavyPrimary
 import com.example.ui.theme.CampusTeal
+import com.example.ui.viewmodel.AdminTab
 import com.example.ui.viewmodel.CampusViewModel
 import com.example.ui.viewmodel.FacultyTab
 import com.example.ui.viewmodel.StudentTab
@@ -139,6 +150,7 @@ fun CampusApp(
 
     // State Collection
     val currentRole by viewModel.currentRole.collectAsState()
+    val adminTab by viewModel.adminTab.collectAsState()
     val facultyTab by viewModel.facultyTab.collectAsState()
     val studentTab by viewModel.studentTab.collectAsState()
     val activeStudent by viewModel.activeStudent.collectAsState()
@@ -146,6 +158,8 @@ fun CampusApp(
 
     val departments by viewModel.departments.collectAsState()
     val students by viewModel.students.collectAsState()
+    val facultyMembers by viewModel.facultyMembers.collectAsState()
+    val auditLogs by viewModel.auditLogs.collectAsState()
     val attendanceHistory by viewModel.allAttendance.collectAsState()
     val results by viewModel.allResults.collectAsState()
     val documents by viewModel.allDocuments.collectAsState()
@@ -173,7 +187,6 @@ fun CampusApp(
     val searchQuery by viewModel.searchQuery.collectAsState()
 
     // Dialog States
-    var showRoleSwitcherDialog by remember { mutableStateOf(false) }
     var showNotificationDialog by remember { mutableStateOf(false) }
     val unreadNotificationCount = notifications.count { !it.isRead }
 
@@ -187,13 +200,46 @@ fun CampusApp(
                     activeStudent = activeStudent,
                     unreadNotificationCount = unreadNotificationCount,
                     currentUserAccount = currentUserAccount,
-                    onRoleClick = { showRoleSwitcherDialog = true },
+                    onRoleClick = { /* Role switching disabled for authenticated security */ },
                     onNotificationClick = { showNotificationDialog = true },
                     onLogoutClick = { viewModel.logout() }
                 )
 
-                // Scrollable sub-header for Faculty view so all 8 departments & modules are 1-tap accessible
-                if (currentRole == UserRole.FACULTY) {
+                // Scrollable sub-header for Admin view across 6 management tabs
+                if (currentRole == UserRole.ADMIN) {
+                    ScrollableTabRow(
+                        selectedTabIndex = adminTab.ordinal,
+                        edgePadding = 12.dp,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = CampusNavyPrimary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("admin_top_tabs")
+                    ) {
+                        AdminTab.values().forEach { tab ->
+                            val label = when (tab) {
+                                AdminTab.DASHBOARD -> "Dashboard"
+                                AdminTab.DEPARTMENTS -> "Depts (${departments.size})"
+                                AdminTab.STUDENTS -> "Students (${students.size})"
+                                AdminTab.FACULTY -> "Faculty (${facultyMembers.size})"
+                                AdminTab.ACCOUNTS -> "Accounts (${allUserAccounts.size})"
+                                AdminTab.AUDIT_LOGS -> "Logs (${auditLogs.size})"
+                            }
+                            Tab(
+                                selected = adminTab == tab,
+                                onClick = { viewModel.setAdminTab(tab) },
+                                text = {
+                                    Text(
+                                        text = label,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (adminTab == tab) FontWeight.Bold else FontWeight.Normal
+                                    )
+                                }
+                            )
+                        }
+                    }
+                } else if (currentRole == UserRole.FACULTY || currentRole == UserRole.DEAN) {
+                    // Scrollable sub-header for Faculty / Dean view
                     ScrollableTabRow(
                         selectedTabIndex = facultyTab.ordinal,
                         edgePadding = 12.dp,
@@ -233,7 +279,69 @@ fun CampusApp(
                 containerColor = MaterialTheme.colorScheme.surface,
                 tonalElevation = 4.dp
             ) {
-                if (currentRole == UserRole.FACULTY) {
+                if (currentRole == UserRole.ADMIN) {
+                    // Admin Navigation Items
+                    NavigationBarItem(
+                        selected = adminTab == AdminTab.DASHBOARD,
+                        onClick = { viewModel.setAdminTab(AdminTab.DASHBOARD) },
+                        icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard") },
+                        label = { Text("Dashboard", fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CampusNavyPrimary,
+                            indicatorColor = CampusNavyPrimary.copy(alpha = 0.15f)
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = adminTab == AdminTab.DEPARTMENTS,
+                        onClick = { viewModel.setAdminTab(AdminTab.DEPARTMENTS) },
+                        icon = { Icon(Icons.Default.Business, contentDescription = "Departments") },
+                        label = { Text("Depts", fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CampusNavyPrimary,
+                            indicatorColor = CampusNavyPrimary.copy(alpha = 0.15f)
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = adminTab == AdminTab.STUDENTS,
+                        onClick = { viewModel.setAdminTab(AdminTab.STUDENTS) },
+                        icon = { Icon(Icons.Default.School, contentDescription = "Students") },
+                        label = { Text("Students", fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CampusNavyPrimary,
+                            indicatorColor = CampusNavyPrimary.copy(alpha = 0.15f)
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = adminTab == AdminTab.FACULTY,
+                        onClick = { viewModel.setAdminTab(AdminTab.FACULTY) },
+                        icon = { Icon(Icons.Default.SupervisorAccount, contentDescription = "Faculty") },
+                        label = { Text("Faculty", fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CampusNavyPrimary,
+                            indicatorColor = CampusNavyPrimary.copy(alpha = 0.15f)
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = adminTab == AdminTab.ACCOUNTS,
+                        onClick = { viewModel.setAdminTab(AdminTab.ACCOUNTS) },
+                        icon = { Icon(Icons.Default.ManageAccounts, contentDescription = "Accounts") },
+                        label = { Text("Accounts", fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CampusNavyPrimary,
+                            indicatorColor = CampusNavyPrimary.copy(alpha = 0.15f)
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = adminTab == AdminTab.AUDIT_LOGS,
+                        onClick = { viewModel.setAdminTab(AdminTab.AUDIT_LOGS) },
+                        icon = { Icon(Icons.Default.History, contentDescription = "Logs") },
+                        label = { Text("Logs", fontSize = 10.sp) },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = CampusNavyPrimary,
+                            indicatorColor = CampusNavyPrimary.copy(alpha = 0.15f)
+                        )
+                    )
+                } else if (currentRole == UserRole.FACULTY || currentRole == UserRole.DEAN) {
                     // Faculty Navigation Items
                     NavigationBarItem(
                         selected = facultyTab == FacultyTab.OVERVIEW,
@@ -368,8 +476,94 @@ fun CampusApp(
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            Crossfade(targetState = currentRole to (if (currentRole == UserRole.FACULTY) facultyTab.name else studentTab.name), label = "screen_fade") { (role, _) ->
-                if (role == UserRole.FACULTY) {
+            val screenKey = when (currentRole) {
+                UserRole.ADMIN -> "ADMIN_${adminTab.name}"
+                UserRole.FACULTY, UserRole.DEAN -> "FACULTY_${facultyTab.name}"
+                UserRole.STUDENT -> "STUDENT_${studentTab.name}"
+            }
+
+            Crossfade(targetState = currentRole to screenKey, label = "screen_fade") { (role, _) ->
+                if (role == UserRole.ADMIN) {
+                    when (adminTab) {
+                        AdminTab.DASHBOARD -> {
+                            AdminDashboardScreen(
+                                departments = departments,
+                                students = students,
+                                faculty = facultyMembers,
+                                userAccounts = allUserAccounts,
+                                auditLogs = auditLogs,
+                                onNavigateTab = { viewModel.setAdminTab(it) }
+                            )
+                        }
+                        AdminTab.DEPARTMENTS -> {
+                            AdminDepartmentScreen(
+                                departments = departments,
+                                students = students,
+                                onCreateDepartment = { name, code, head, room, cb ->
+                                    viewModel.createDepartment(name, code, head, room, cb)
+                                },
+                                onUpdateDepartment = { dept, cb ->
+                                    viewModel.updateDepartment(dept, cb)
+                                },
+                                onToggleStatus = { dept ->
+                                    viewModel.toggleDepartmentStatus(dept)
+                                }
+                            )
+                        }
+                        AdminTab.STUDENTS -> {
+                            AdminStudentScreen(
+                                students = students,
+                                departments = departments,
+                                onEnrollStudent = { roll, name, email, phone, dept, sem, sec, cgpa, att, guardian, createAcc, pass, cb ->
+                                    viewModel.enrollStudentAdmin(roll, name, email, phone, dept, sem, sec, cgpa, att, guardian, createAcc, pass, cb)
+                                },
+                                onUpdateStudent = { student, cb ->
+                                    viewModel.updateStudentAdmin(student, cb)
+                                },
+                                onToggleStatus = { student ->
+                                    viewModel.toggleStudentStatus(student)
+                                }
+                            )
+                        }
+                        AdminTab.FACULTY -> {
+                            AdminFacultyScreen(
+                                facultyMembers = facultyMembers,
+                                departments = departments,
+                                userAccounts = allUserAccounts,
+                                onAppointFaculty = { empId, name, email, phone, dept, desig, username, createAcc, pass, facultyRole, cb ->
+                                    viewModel.appointFacultyAdmin(empId, name, email, phone, dept, desig, username, createAcc, pass, facultyRole, cb)
+                                },
+                                onUpdateFaculty = { faculty, cb ->
+                                    viewModel.updateFacultyAdmin(faculty, cb)
+                                },
+                                onToggleStatus = { faculty ->
+                                    viewModel.toggleFacultyStatus(faculty)
+                                }
+                            )
+                        }
+                        AdminTab.ACCOUNTS -> {
+                            AdminAccountsScreen(
+                                userAccounts = allUserAccounts,
+                                departments = departments,
+                                currentSessionAccount = currentUserAccount,
+                                onCreateAccount = { username, pass, accRole, name, dept, desig, cb ->
+                                    viewModel.createAccountAdmin(username, pass, accRole, name, dept, desig, cb)
+                                },
+                                onToggleAccountStatus = { account ->
+                                    viewModel.toggleAccountStatus(account)
+                                },
+                                onResetPassword = { accountId, newPass, cb ->
+                                    viewModel.resetPasswordAdmin(accountId, newPass, cb)
+                                }
+                            )
+                        }
+                        AdminTab.AUDIT_LOGS -> {
+                            AdminAuditLogsScreen(
+                                auditLogs = auditLogs
+                            )
+                        }
+                    }
+                } else if (role == UserRole.FACULTY || role == UserRole.DEAN) {
                     when (facultyTab) {
                         FacultyTab.OVERVIEW -> {
                             FacultyDashboardScreen(
@@ -522,20 +716,6 @@ fun CampusApp(
                 }
             }
         }
-    }
-
-    // Role Switcher Dialog
-    if (showRoleSwitcherDialog) {
-        RoleSwitcherDialog(
-            currentRole = currentRole,
-            students = authorizedStudents,
-            selectedStudentId = activeStudentId,
-            currentUserAccount = currentUserAccount,
-            onRoleSelected = { viewModel.setUserRole(it) },
-            onStudentSelected = { viewModel.setActiveStudentId(it) },
-            onLogout = { viewModel.logout() },
-            onDismiss = { showRoleSwitcherDialog = false }
-        )
     }
 
     // Notifications Dialog

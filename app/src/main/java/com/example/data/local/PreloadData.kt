@@ -4,7 +4,9 @@ import com.example.data.model.AcademicResultEntity
 import com.example.data.model.AssignmentEntity
 import com.example.data.model.AssignmentSubmissionEntity
 import com.example.data.model.AttendanceRecordEntity
+import com.example.data.model.AuditLogEntity
 import com.example.data.model.DepartmentEntity
+import com.example.data.model.FacultyMemberEntity
 import com.example.data.model.LeaveRequestEntity
 import com.example.data.model.NotificationEntity
 import com.example.data.model.StudentDocumentEntity
@@ -15,6 +17,34 @@ import com.example.util.CampusCrypto
 object PreloadData {
 
     val userAccounts = listOf(
+        // Super Admin Account (Full system administration & governance)
+        UserAccountEntity(
+            id = "ACC-ADMIN-01",
+            username = "admin",
+            passwordHash = CampusCrypto.hashPassword("admin123"),
+            plainPasswordHint = "admin123",
+            role = "ADMIN",
+            fullName = "Dr. Arthur Pendelton",
+            departmentId = "ALL",
+            designation = "Chief System Administrator",
+            employeeId = "EMP-ADM-001",
+            status = "ACTIVE"
+        ),
+
+        // Academic Dean Account
+        UserAccountEntity(
+            id = "ACC-DEAN",
+            username = "dean.xavier",
+            passwordHash = CampusCrypto.hashPassword("admin123"),
+            plainPasswordHint = "admin123",
+            role = "DEAN",
+            fullName = "Prof. Charles Xavier",
+            departmentId = "ALL",
+            designation = "Academic Dean / Director",
+            employeeId = "EMP-DEAN-001",
+            status = "ACTIVE"
+        ),
+
         // Department Faculty / Staff Accounts (Restricted to their respective department)
         UserAccountEntity(
             id = "ACC-FAC-CSE",
@@ -24,7 +54,9 @@ object PreloadData {
             role = "FACULTY",
             fullName = "Dr. Robert Vance, Ph.D.",
             departmentId = "CSE",
-            designation = "HOD & Professor (CSE)"
+            designation = "HOD & Professor (CSE)",
+            employeeId = "EMP-CSE-001",
+            status = "ACTIVE"
         ),
         UserAccountEntity(
             id = "ACC-FAC-ECE",
@@ -34,7 +66,9 @@ object PreloadData {
             role = "FACULTY",
             fullName = "Dr. Elena Rostova, Ph.D.",
             departmentId = "ECE",
-            designation = "HOD & Professor (ECE)"
+            designation = "HOD & Professor (ECE)",
+            employeeId = "EMP-ECE-001",
+            status = "ACTIVE"
         ),
         UserAccountEntity(
             id = "ACC-FAC-IT",
@@ -44,7 +78,9 @@ object PreloadData {
             role = "FACULTY",
             fullName = "Prof. Alan Turing Jr.",
             departmentId = "IT",
-            designation = "Associate Professor (IT)"
+            designation = "Associate Professor (IT)",
+            employeeId = "EMP-IT-001",
+            status = "ACTIVE"
         ),
         UserAccountEntity(
             id = "ACC-FAC-ME",
@@ -54,17 +90,9 @@ object PreloadData {
             role = "FACULTY",
             fullName = "Dr. Marcus Sterling, M.Tech",
             departmentId = "ME",
-            designation = "Associate Professor (ME)"
-        ),
-        UserAccountEntity(
-            id = "ACC-DEAN",
-            username = "dean.xavier",
-            passwordHash = CampusCrypto.hashPassword("admin123"),
-            plainPasswordHint = "admin123",
-            role = "DEAN",
-            fullName = "Prof. Charles Xavier",
-            departmentId = "ALL",
-            designation = "Academic Dean / Director"
+            designation = "Associate Professor (ME)",
+            employeeId = "EMP-ME-001",
+            status = "ACTIVE"
         ),
 
         // Individual Student Accounts (Unique access to their own data only)
@@ -864,6 +892,114 @@ object PreloadData {
             timestamp = System.currentTimeMillis() - 3600000 * 48,
             isRead = true,
             actionTarget = "ANNOUNCEMENTS"
+        )
+    )
+
+    val facultyMembers = listOf(
+        FacultyMemberEntity(
+            employeeId = "EMP-ADM-001",
+            fullName = "Dr. Arthur Pendelton",
+            email = "admin@campus.edu",
+            phone = "+1 (555) 010-0099",
+            departmentId = "ALL",
+            designation = "Chief System Administrator",
+            username = "admin",
+            status = "ACTIVE",
+            joinedDate = "2022-08-01"
+        ),
+        FacultyMemberEntity(
+            employeeId = "EMP-DEAN-001",
+            fullName = "Prof. Charles Xavier",
+            email = "dean.xavier@campus.edu",
+            phone = "+1 (555) 010-0001",
+            departmentId = "ALL",
+            designation = "Academic Dean / Director",
+            username = "dean.xavier",
+            status = "ACTIVE",
+            joinedDate = "2020-06-15"
+        ),
+        FacultyMemberEntity(
+            employeeId = "EMP-CSE-001",
+            fullName = "Dr. Robert Vance, Ph.D.",
+            email = "r.vance@campus.edu",
+            phone = "+1 (555) 012-3401",
+            departmentId = "CSE",
+            designation = "HOD & Professor (CSE)",
+            username = "vance.cse",
+            status = "ACTIVE",
+            joinedDate = "2021-01-10"
+        ),
+        FacultyMemberEntity(
+            employeeId = "EMP-ECE-001",
+            fullName = "Dr. Elena Rostova, Ph.D.",
+            email = "e.rostova@campus.edu",
+            phone = "+1 (555) 012-3402",
+            departmentId = "ECE",
+            designation = "HOD & Professor (ECE)",
+            username = "rostova.ece",
+            status = "ACTIVE",
+            joinedDate = "2021-07-20"
+        ),
+        FacultyMemberEntity(
+            employeeId = "EMP-IT-001",
+            fullName = "Prof. Alan Turing Jr.",
+            email = "a.turing@campus.edu",
+            phone = "+1 (555) 012-3403",
+            departmentId = "IT",
+            designation = "Associate Professor (IT)",
+            username = "turing.it",
+            status = "ACTIVE",
+            joinedDate = "2022-02-14"
+        ),
+        FacultyMemberEntity(
+            employeeId = "EMP-ME-001",
+            fullName = "Dr. Marcus Sterling, M.Tech",
+            email = "m.sterling@campus.edu",
+            phone = "+1 (555) 012-3404",
+            departmentId = "ME",
+            designation = "Associate Professor (ME)",
+            username = "sterling.me",
+            status = "ACTIVE",
+            joinedDate = "2022-09-01"
+        )
+    )
+
+    val auditLogs = listOf(
+        AuditLogEntity(
+            actorUserId = "ACC-ADMIN-01",
+            actorName = "Dr. Arthur Pendelton",
+            actionType = "SYSTEM_INIT",
+            targetEntity = "SYSTEM",
+            targetId = "SYS-001",
+            timestamp = System.currentTimeMillis() - 86400000L * 3,
+            description = "Campus Management System initialized with 4 departments and RBAC access controls."
+        ),
+        AuditLogEntity(
+            actorUserId = "ACC-ADMIN-01",
+            actorName = "Dr. Arthur Pendelton",
+            actionType = "CREATE",
+            targetEntity = "FACULTY",
+            targetId = "EMP-CSE-001",
+            timestamp = System.currentTimeMillis() - 86400000L * 2,
+            description = "Assigned Dr. Robert Vance as Head of Department for Computer Science (CSE)."
+        ),
+        AuditLogEntity(
+            actorUserId = "ACC-ADMIN-01",
+            actorName = "Dr. Arthur Pendelton",
+            actionType = "CREATE",
+            targetEntity = "DEPARTMENT",
+            targetId = "CSE",
+            timestamp = System.currentTimeMillis() - 86400000L * 2,
+            description = "Configured Computer Science & Engineering department in Tech Block A - 302."
+        ),
+        AuditLogEntity(
+            actorUserId = "ACC-ADMIN-01",
+            actorName = "Dr. Arthur Pendelton",
+            actionType = "CREATE",
+            targetEntity = "STUDENT",
+            targetId = "STU-101",
+            timestamp = System.currentTimeMillis() - 86400000L,
+            description = "Enrolled student Alex Mercer (23CS001) in Computer Science semester 5."
         )
     )
 }

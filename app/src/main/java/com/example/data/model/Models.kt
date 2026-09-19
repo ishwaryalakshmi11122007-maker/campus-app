@@ -5,15 +5,32 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "user_accounts")
 data class UserAccountEntity(
-    @PrimaryKey val id: String, // e.g. "ACC-FAC-CSE", "ACC-STU-101"
-    val username: String, // Roll number (e.g. CS2024001) or faculty handle (e.g. dr.vance)
+    @PrimaryKey val id: String, // e.g. "ACC-FAC-CSE", "ACC-STU-101", "ACC-ADMIN-01"
+    val username: String, // Roll number (e.g. CS2024001), faculty handle (e.g. vance.cse), or "admin"
     val passwordHash: String, // SHA-256 password hash
-    val plainPasswordHint: String, // Clear text hint for credential guide/quick login
-    val role: String, // "FACULTY", "STUDENT", "DEAN"
+    val plainPasswordHint: String = "", // Optional hint for demonstration/temporary record
+    val role: String, // "ADMIN", "DEAN", "FACULTY", "STUDENT"
     val fullName: String,
     val departmentId: String, // "CSE", "ECE", "IT", "ME", or "ALL"
     val designation: String = "Staff Member",
-    val studentId: String? = null // Reference to StudentEntity.id if STUDENT
+    val studentId: String? = null, // Reference to StudentEntity.id if STUDENT
+    val employeeId: String? = null, // Reference to FacultyMemberEntity.employeeId if FACULTY/DEAN/ADMIN
+    val status: String = "ACTIVE", // "ACTIVE", "DISABLED", "INACTIVE"
+    val createdAt: Long = System.currentTimeMillis(),
+    val lastLogin: Long? = null
+)
+
+@Entity(tableName = "faculty_members")
+data class FacultyMemberEntity(
+    @PrimaryKey val employeeId: String, // e.g. "EMP-CSE-001"
+    val fullName: String,
+    val email: String,
+    val phone: String,
+    val departmentId: String,
+    val designation: String,
+    val username: String,
+    val status: String = "ACTIVE", // "ACTIVE", "INACTIVE"
+    val joinedDate: String = "2024-01-15"
 )
 
 @Entity(tableName = "departments")
@@ -23,7 +40,20 @@ data class DepartmentEntity(
     val code: String,
     val headOfDept: String,
     val totalStudents: Int = 0,
-    val buildingRoom: String = ""
+    val buildingRoom: String = "",
+    val status: String = "ACTIVE" // "ACTIVE", "INACTIVE"
+)
+
+@Entity(tableName = "audit_logs")
+data class AuditLogEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val actorUserId: String,
+    val actorName: String,
+    val actionType: String, // "CREATE", "UPDATE", "DEACTIVATE", "REACTIVATE", "LOGIN", "PASSWORD_RESET", "STATUS_CHANGE"
+    val targetEntity: String, // "STUDENT", "FACULTY", "DEPARTMENT", "ACCOUNT", "MARKS", "ATTENDANCE"
+    val targetId: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val description: String
 )
 
 @Entity(tableName = "students")

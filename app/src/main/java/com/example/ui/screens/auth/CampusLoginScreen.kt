@@ -78,10 +78,10 @@ fun CampusLoginScreen(
     onLogin: (username: String, passwordRaw: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var username by remember { mutableStateOf("vance.cse") }
-    var password by remember { mutableStateOf("cse123") }
+    var username by remember { mutableStateOf("admin") }
+    var password by remember { mutableStateOf("admin123") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var selectedPresetRoleTab by remember { mutableIntStateOf(0) } // 0 = Faculty/Staff, 1 = Students
+    var selectedPresetRoleTab by remember { mutableIntStateOf(0) } // 0 = Admin, 1 = Dean, 2 = Faculty, 3 = Students
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -325,7 +325,7 @@ fun CampusLoginScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Tab Switcher between Faculty (Dept Staff) and Students
+                        // Tab Switcher across 4 Roles: Admin, Dean, Faculty, Students
                         TabRow(
                             selectedTabIndex = selectedPresetRoleTab,
                             containerColor = Color.Transparent,
@@ -334,21 +334,32 @@ fun CampusLoginScreen(
                             Tab(
                                 selected = selectedPresetRoleTab == 0,
                                 onClick = { selectedPresetRoleTab = 0 },
-                                text = { Text("Department Staff", fontWeight = FontWeight.Bold) }
+                                text = { Text("Admin", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
                             )
                             Tab(
                                 selected = selectedPresetRoleTab == 1,
                                 onClick = { selectedPresetRoleTab = 1 },
-                                text = { Text("Students", fontWeight = FontWeight.Bold) }
+                                text = { Text("Dean", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                            )
+                            Tab(
+                                selected = selectedPresetRoleTab == 2,
+                                onClick = { selectedPresetRoleTab = 2 },
+                                text = { Text("Faculty", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
+                            )
+                            Tab(
+                                selected = selectedPresetRoleTab == 3,
+                                onClick = { selectedPresetRoleTab = 3 },
+                                text = { Text("Students", fontWeight = FontWeight.Bold, fontSize = 11.sp) }
                             )
                         }
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        val filteredAccounts = if (selectedPresetRoleTab == 0) {
-                            userAccounts.filter { it.role == "FACULTY" || it.role == "DEAN" }
-                        } else {
-                            userAccounts.filter { it.role == "STUDENT" }
+                        val filteredAccounts = when (selectedPresetRoleTab) {
+                            0 -> userAccounts.filter { it.role == "ADMIN" }
+                            1 -> userAccounts.filter { it.role == "DEAN" }
+                            2 -> userAccounts.filter { it.role == "FACULTY" }
+                            else -> userAccounts.filter { it.role == "STUDENT" }
                         }
 
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

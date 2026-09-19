@@ -8,12 +8,15 @@ import com.example.data.model.AcademicResultEntity
 import com.example.data.model.AssignmentEntity
 import com.example.data.model.AssignmentSubmissionEntity
 import com.example.data.model.AttendanceRecordEntity
+import com.example.data.model.AuditLogEntity
 import com.example.data.model.DepartmentEntity
+import com.example.data.model.FacultyMemberEntity
 import com.example.data.model.LeaveRequestEntity
 import com.example.data.model.NotificationEntity
 import com.example.data.model.StudentDocumentEntity
 import com.example.data.model.StudentEntity
 import com.example.data.model.UserAccountEntity
+import com.example.data.repository.AuthResult
 import com.example.data.repository.CampusRepository
 import com.example.util.CampusCrypto
 import com.example.util.NotificationHelper
@@ -29,8 +32,19 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 enum class UserRole {
+    ADMIN,
+    DEAN,
     FACULTY,
     STUDENT
+}
+
+enum class AdminTab {
+    DASHBOARD,
+    DEPARTMENTS,
+    STUDENTS,
+    FACULTY,
+    ACCOUNTS,
+    AUDIT_LOGS
 }
 
 enum class FacultyTab {
@@ -103,6 +117,9 @@ class CampusViewModel(
     private val _studentTab = MutableStateFlow(StudentTab.OVERVIEW)
     val studentTab: StateFlow<StudentTab> = _studentTab.asStateFlow()
 
+    private val _adminTab = MutableStateFlow(AdminTab.DASHBOARD)
+    val adminTab: StateFlow<AdminTab> = _adminTab.asStateFlow()
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
@@ -110,6 +127,18 @@ class CampusViewModel(
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
     val departments: StateFlow<List<DepartmentEntity>> = repository.allDepartments
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val activeDepartments: StateFlow<List<DepartmentEntity>> = repository.activeDepartments
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val facultyMembers: StateFlow<List<FacultyMemberEntity>> = repository.allFacultyMembers
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val activeFacultyMembers: StateFlow<List<FacultyMemberEntity>> = repository.activeFacultyMembers
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val auditLogs: StateFlow<List<AuditLogEntity>> = repository.allAuditLogs
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val students: StateFlow<List<StudentEntity>> = repository.allStudents
@@ -165,7 +194,7 @@ class CampusViewModel(
 
     // Department staff can ONLY see students belonging to their department.
     // Individual students can ONLY see their own record.
-    // Dean can see all departments or filter by department.
+    // Admin & Dean can see all departments or filter by department.
     val authorizedStudents: StateFlow<List<StudentEntity>> = combine(
         students,
         _currentUserAccount,
@@ -174,7 +203,7 @@ class CampusViewModel(
         if (account == null) emptyList()
         else if (account.role == "STUDENT") {
             stuList.filter { it.id == (account.studentId ?: "") }
-        } else if (account.role == "DEAN" || account.departmentId == "ALL") {
+        } else if (account.role == "ADMIN" || account.role == "DEAN" || account.departmentId == "ALL") {
             if (filter == "ALL") stuList else stuList.filter { it.departmentId.equals(filter, ignoreCase = true) }
         } else {
             // Strictly isolated to the staff's department
@@ -184,13 +213,14 @@ class CampusViewModel(
 
     val authorizedAttendance: StateFlow<List<AttendanceRecordEntity>> = combine(
         allAttendance,
-        _currentUserAccount
-    ) { attList, account ->
+        _currentUserAccount,
+        _selectedDepartmentFilter
+    ) { attList, account, filter ->
         if (account == null) emptyList()
         else if (account.role == "STUDENT") {
             attList.filter { it.studentId == (account.studentId ?: "") }
-        } else if (account.role == "DEAN" || account.departmentId == "ALL") {
-            attList
+        } else if (account.role == "ADMIN" || account.role == "DEAN" || account.departmentId == "ALL") {
+            if (filter == "ALL") attList else attList.filter { it.departmentId.equals(filter, ignoreCase = true) }
         } else {
             attList.filter { it.departmentId.equals(account.departmentId, ignoreCase = true) }
         }
@@ -204,7 +234,7 @@ class CampusViewModel(
         if (account == null) emptyList()
         else if (account.role == "STUDENT") {
             docList.filter { it.studentId == (account.studentId ?: "") }
-        } else if (account.role == "DEAN" || account.departmentId == "ALL") {
+        } else if (account.role == "ADMIN" || account.role == "DEAN" || account.departmentId == "ALL") {
             docList
         } else {
             val allowedStudentIds = stuList.filter { it.departmentId.equals(account.departmentId, ignoreCase = true) }.map { it.id }.toSet()
@@ -221,7 +251,7 @@ class CampusViewModel(
         else if (account.role == "STUDENT") {
             val myStu = stuList.find { it.id == (account.studentId ?: "") }
             if (myStu != null) assignList.filter { it.departmentId.equals(myStu.departmentId, ignoreCase = true) } else assignList
-        } else if (account.role == "DEAN" || account.departmentId == "ALL") {
+        } else if (account.role == "ADMIN" || account.role == "DEAN" || account.departmentId == "ALL") {
             assignList
         } else {
             assignList.filter { it.departmentId.equals(account.departmentId, ignoreCase = true) }
@@ -236,7 +266,7 @@ class CampusViewModel(
         if (account == null) emptyList()
         else if (account.role == "STUDENT") {
             subList.filter { it.studentId == (account.studentId ?: "") }
-        } else if (account.role == "DEAN" || account.departmentId == "ALL") {
+        } else if (account.role == "ADMIN" || account.role == "DEAN" || account.departmentId == "ALL") {
             subList
         } else {
             val deptAssignIds = assignList.filter { it.departmentId.equals(account.departmentId, ignoreCase = true) }.map { it.id }.toSet()
@@ -251,7 +281,7 @@ class CampusViewModel(
         if (account == null) emptyList()
         else if (account.role == "STUDENT") {
             reqList.filter { it.studentId == (account.studentId ?: "") }
-        } else if (account.role == "DEAN" || account.departmentId == "ALL") {
+        } else if (account.role == "ADMIN" || account.role == "DEAN" || account.departmentId == "ALL") {
             reqList
         } else {
             reqList.filter { it.departmentId.equals(account.departmentId, ignoreCase = true) }
@@ -350,6 +380,10 @@ class CampusViewModel(
         _studentTab.value = tab
     }
 
+    fun setAdminTab(tab: AdminTab) {
+        _adminTab.value = tab
+    }
+
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
     }
@@ -359,23 +393,48 @@ class CampusViewModel(
     fun login(username: String, passwordRaw: String, onComplete: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _loginError.value = null
-            val account = repository.authenticateUser(username, passwordRaw)
-            if (account != null) {
-                _currentUserAccount.value = account
-                if (account.role == "STUDENT") {
-                    _currentRole.value = UserRole.STUDENT
-                    account.studentId?.let { id ->
-                        _selectedStudentId.value = id
+            when (val result = repository.authenticateUser(username, passwordRaw)) {
+                is AuthResult.Success -> {
+                    val account = result.userAccount
+                    _currentUserAccount.value = account
+                    when (account.role) {
+                        "ADMIN" -> {
+                            _currentRole.value = UserRole.ADMIN
+                            _adminTab.value = AdminTab.DASHBOARD
+                            _selectedDepartmentFilter.value = "ALL"
+                        }
+                        "DEAN" -> {
+                            _currentRole.value = UserRole.DEAN
+                            _facultyTab.value = FacultyTab.OVERVIEW
+                            _selectedDepartmentFilter.value = "ALL"
+                        }
+                        "FACULTY" -> {
+                            _currentRole.value = UserRole.FACULTY
+                            _facultyTab.value = FacultyTab.OVERVIEW
+                            _selectedDepartmentFilter.value = account.departmentId
+                        }
+                        "STUDENT" -> {
+                            _currentRole.value = UserRole.STUDENT
+                            _studentTab.value = StudentTab.OVERVIEW
+                            account.studentId?.let { id ->
+                                _selectedStudentId.value = id
+                            }
+                        }
+                        else -> {
+                            _currentRole.value = UserRole.STUDENT
+                        }
                     }
-                } else {
-                    _currentRole.value = UserRole.FACULTY
-                    _selectedDepartmentFilter.value = account.departmentId
+                    _toastMessage.emit("Welcome, ${account.fullName}")
+                    onComplete(true)
                 }
-                _toastMessage.emit("Authenticated: ${account.fullName} [${account.departmentId}]")
-                onComplete(true)
-            } else {
-                _loginError.value = "Invalid credentials. Use preset demo accounts below."
-                onComplete(false)
+                is AuthResult.AccountDeactivated -> {
+                    _loginError.value = result.message
+                    onComplete(false)
+                }
+                is AuthResult.InvalidCredentials -> {
+                    _loginError.value = "Invalid credentials. Please verify your username and password."
+                    onComplete(false)
+                }
             }
         }
     }
@@ -690,6 +749,288 @@ class CampusViewModel(
         viewModelScope.launch {
             repository.markAllNotificationsAsRead()
             _toastMessage.emit("All notifications marked as read")
+        }
+    }
+
+    // --- ADMIN MODULE OPERATIONS ---
+
+    // 1. Department Administration
+    fun createDepartment(
+        name: String,
+        code: String,
+        headOfDept: String,
+        buildingRoom: String,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val id = "DEPT-${code.trim().uppercase()}"
+            val dept = DepartmentEntity(
+                id = id,
+                name = name.trim(),
+                code = code.trim().uppercase(),
+                headOfDept = headOfDept.trim(),
+                buildingRoom = buildingRoom.trim(),
+                status = "ACTIVE"
+            )
+            val result = repository.addDepartment(dept, _currentUserAccount.value)
+            if (result.isSuccess) {
+                _toastMessage.emit("Department '${dept.name}' created successfully")
+                onComplete(true, "Department created successfully")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to create department"
+                onComplete(false, error)
+            }
+        }
+    }
+
+    fun updateDepartment(
+        department: DepartmentEntity,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = repository.updateDepartment(department, _currentUserAccount.value)
+            if (result.isSuccess) {
+                _toastMessage.emit("Department updated")
+                onComplete(true, "Department updated")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to update department"
+                onComplete(false, error)
+            }
+        }
+    }
+
+    fun toggleDepartmentStatus(department: DepartmentEntity) {
+        viewModelScope.launch {
+            val newStatus = if (department.status == "ACTIVE") "INACTIVE" else "ACTIVE"
+            val result = repository.setDepartmentStatus(department.id, newStatus, _currentUserAccount.value)
+            if (result.isSuccess) {
+                _toastMessage.emit("Department '${department.name}' is now $newStatus")
+            }
+        }
+    }
+
+    // 2. Student Administration
+    fun enrollStudentAdmin(
+        rollNo: String,
+        fullName: String,
+        email: String,
+        phone: String,
+        departmentId: String,
+        semester: Int,
+        section: String,
+        cgpa: Double,
+        attendancePercentage: Double,
+        guardianContact: String,
+        createAccount: Boolean,
+        tempPasswordRaw: String?,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val id = "STU-${System.currentTimeMillis().toString().takeLast(5)}"
+            val student = StudentEntity(
+                id = id,
+                rollNo = rollNo.trim().uppercase(),
+                fullName = fullName.trim(),
+                email = email.trim(),
+                phone = phone.trim(),
+                departmentId = departmentId,
+                semester = semester,
+                section = section.trim().uppercase(),
+                cgpa = cgpa,
+                attendancePercentage = attendancePercentage,
+                guardianContact = guardianContact.trim(),
+                status = if (attendancePercentage < 75.0 || cgpa < 5.5) "AT_RISK" else "ACTIVE"
+            )
+            val result = repository.addStudentWithAccount(
+                student = student,
+                createAccount = createAccount,
+                tempPasswordRaw = tempPasswordRaw,
+                actor = _currentUserAccount.value
+            )
+            if (result.isSuccess) {
+                _toastMessage.emit("Student '${student.fullName}' enrolled successfully")
+                onComplete(true, "Student enrolled successfully")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to enroll student"
+                onComplete(false, error)
+            }
+        }
+    }
+
+    fun updateStudentAdmin(
+        student: StudentEntity,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = repository.updateStudent(student, _currentUserAccount.value)
+            if (result.isSuccess) {
+                _toastMessage.emit("Student record updated")
+                onComplete(true, "Student updated successfully")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to update student"
+                onComplete(false, error)
+            }
+        }
+    }
+
+    fun toggleStudentStatus(student: StudentEntity) {
+        viewModelScope.launch {
+            val newStatus = if (student.status == "INACTIVE") "ACTIVE" else "INACTIVE"
+            val result = repository.setStudentStatus(student.id, newStatus, _currentUserAccount.value)
+            if (result.isSuccess) {
+                _toastMessage.emit("Student '${student.fullName}' is now $newStatus")
+            }
+        }
+    }
+
+    // 3. Faculty & Staff Administration
+    fun appointFacultyAdmin(
+        employeeId: String,
+        fullName: String,
+        email: String,
+        phone: String,
+        departmentId: String,
+        designation: String,
+        username: String,
+        createAccount: Boolean,
+        tempPasswordRaw: String?,
+        role: String,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val faculty = FacultyMemberEntity(
+                employeeId = employeeId.trim().uppercase(),
+                fullName = fullName.trim(),
+                email = email.trim(),
+                phone = phone.trim(),
+                departmentId = departmentId,
+                designation = designation.trim(),
+                username = username.trim(),
+                status = "ACTIVE"
+            )
+            val result = repository.addFacultyMember(
+                faculty = faculty,
+                createAccount = createAccount,
+                tempPasswordRaw = tempPasswordRaw,
+                role = role,
+                actor = _currentUserAccount.value
+            )
+            if (result.isSuccess) {
+                _toastMessage.emit("Faculty '${faculty.fullName}' appointed successfully")
+                onComplete(true, "Faculty appointed successfully")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to add faculty member"
+                onComplete(false, error)
+            }
+        }
+    }
+
+    fun updateFacultyAdmin(
+        faculty: FacultyMemberEntity,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = repository.updateFacultyMember(faculty, _currentUserAccount.value)
+            if (result.isSuccess) {
+                _toastMessage.emit("Faculty record updated")
+                onComplete(true, "Faculty updated successfully")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to update faculty"
+                onComplete(false, error)
+            }
+        }
+    }
+
+    fun toggleFacultyStatus(faculty: FacultyMemberEntity) {
+        viewModelScope.launch {
+            val newStatus = if (faculty.status == "ACTIVE") "INACTIVE" else "ACTIVE"
+            val result = repository.setFacultyStatus(faculty.employeeId, newStatus, _currentUserAccount.value)
+            if (result.isSuccess) {
+                _toastMessage.emit("Faculty '${faculty.fullName}' is now $newStatus")
+            }
+        }
+    }
+
+    // 4. Account Administration & Security
+    fun createAccountAdmin(
+        username: String,
+        passwordRaw: String,
+        role: String,
+        fullName: String,
+        departmentId: String,
+        designation: String,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = repository.createUserAccount(
+                username = username,
+                passwordRaw = passwordRaw,
+                role = role,
+                fullName = fullName,
+                departmentId = departmentId,
+                designation = designation,
+                actor = _currentUserAccount.value
+            )
+            if (result.isSuccess) {
+                _toastMessage.emit("Account created for $fullName")
+                onComplete(true, "Account created successfully")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to create user account"
+                onComplete(false, error)
+            }
+        }
+    }
+
+    fun toggleAccountStatus(account: UserAccountEntity) {
+        viewModelScope.launch {
+            if (account.id == _currentUserAccount.value?.id) {
+                _toastMessage.emit("Security restriction: You cannot deactivate your own active session.")
+                return@launch
+            }
+            val newStatus = if (account.status == "ACTIVE") "DISABLED" else "ACTIVE"
+            val result = repository.setAccountStatus(account.id, newStatus, _currentUserAccount.value)
+            if (result.isSuccess) {
+                _toastMessage.emit("Account '${account.username}' is now $newStatus")
+            }
+        }
+    }
+
+    fun resetPasswordAdmin(
+        accountId: String,
+        newPasswordRaw: String,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = repository.resetAccountPassword(accountId, newPasswordRaw, _currentUserAccount.value)
+            if (result.isSuccess) {
+                _toastMessage.emit("Password reset successfully")
+                onComplete(true, "Password has been reset.")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to reset password"
+                onComplete(false, error)
+            }
+        }
+    }
+
+    fun changeOwnPassword(
+        currentPasswordRaw: String,
+        newPasswordRaw: String,
+        onComplete: (Boolean, String) -> Unit
+    ) {
+        viewModelScope.launch {
+            val account = _currentUserAccount.value
+            if (account == null) {
+                onComplete(false, "Not logged in")
+                return@launch
+            }
+            val result = repository.changePassword(account.id, currentPasswordRaw, newPasswordRaw)
+            if (result.isSuccess) {
+                _toastMessage.emit("Password changed successfully")
+                onComplete(true, "Password changed successfully")
+            } else {
+                val error = result.exceptionOrNull()?.message ?: "Failed to change password"
+                onComplete(false, error)
+            }
         }
     }
 }
